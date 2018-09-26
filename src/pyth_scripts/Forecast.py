@@ -1,6 +1,7 @@
 # Forecast.py downloads point forecast data from the National Weather Service and combines
 # the 24-hour precipitation forecast with recent observations to project conditions relative
 # to the rainfall thresholds for Seattle, WA, and plots the results.
+# By Sarah J. Fischer and Rex L. Baum, USGS 2015-2016; Latest revision 09-26-2018, RLB
 #
 # Get libraries
 import requests
@@ -8,6 +9,7 @@ import datetime as dt
 import xmltodict
 from collections import OrderedDict
 import os
+import subprocess
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
@@ -155,6 +157,11 @@ else:
 print(thresh_path)
 os.system(thresh_path)
 
+# Run shell script to delete extra space characters from time-series input files
+args = ['../../src/trimSpacesF.sh']
+p = subprocess.Popen(args)
+print(p)
+
 # Plot Incremental Precipitation and Forecasted Precipitation
 # Functions for plotting Recent and Antecedent precipitation threshold
 def Threshold(numbers,ra_x_min,ra_x_max,ra_intercept,ra_slope): # Compute threshold line within defined limits
@@ -212,6 +219,33 @@ def readfiles(file_list): # Read values from table of current conditions
                                   dtype="|S", autostrip=True).T)
     return data
 
+def readfilesDate(file_list, cols):  # Read time and date values from list of text files
+    """ read timestamp columns from <TAB> delimited files as strings
+        ignoring '# Comment' lines """
+    data = []
+    for fname in file_list:
+        data.append(
+                    np.genfromtxt(fname, 
+                                  comments='#',    # skip comment lines
+                                  delimiter='\t',
+                                  dtype ="S17", 
+                                  usecols=cols,
+                                  autostrip=True,
+                                  ).T)
+    return data
+
+def readfilesFloat(file_list, cols):  # Read values from list of text files
+    """ read <TAB> delimited files as floats
+        ignoring '# Comment' lines """
+    data = []
+    for fname in file_list:
+        data.append(
+                    np.loadtxt(fname, 
+                                  comments='#',    # skip comment lines  skiprows=3,
+                                  delimiter='\t',
+                                  usecols=cols))
+    return data
+
 def init_plot(title, xMin=0, xMax=15, yMin=0, yMax=8): # Set plot dimensions and parameters
     plt.figure(figsize=(12,6)) 
     plt.title(title + disclaimers + date_text, fontsize=11)
@@ -263,7 +297,7 @@ os.chdir('../../data/NWS')
 
 data = readfiles(glob.glob('data/ThSta*.txt'))
 for i,d in enumerate(data):
-    plt.scatter(d[2],d[3], # Scatter plot of current conditions (from NWS folder)
+    plt.scatter(float(d[2]),float(d[3]), # Scatter plot of current conditions (from NWS folder)
                 marker=markers[str(d[1])][0],
                 c=markers[str(d[1])][1],
                 label=markers[str(d[1])][2], s=150)
@@ -272,7 +306,7 @@ os.chdir('../../data/Forecast')
 
 data = readfiles(glob.glob('data/ThSta*.txt'))
 for i,d in enumerate(data):
-    plt.scatter(d[2],d[3], # Scatter plot of 24-hour forecast conditions (from Forecast folder)
+    plt.scatter(float(d[2]),float(d[3]), # Scatter plot of 24-hour forecast conditions (from Forecast folder)
                 marker=markers1[str(d[1])][0],
                 c=markers1[str(d[1])][1],
                 label=markers1[str(d[1])][2], alpha = 0.3, s=150)
@@ -281,36 +315,32 @@ for i,d in enumerate(data):
 plot_threshold()
 end_plot(name='forecast.png', cols=2)
 
-#Plot Time Series Precipitation for each station
-def readfiles(file_list): # Import data from list of text input files
-    data = []
-    for fname in file_list:
-        data.append(
-                    np.genfromtxt(fname,
-                                  comments='#',
-                                  delimiter='\t',
-                                  dtype="|S", autostrip=True).T)
-    return data
-
-def init_plot(title, yMin=0, yMax=1.25): # Set plot parameters and dimensions
+def init_plotTS(title): # Set plot parameters and dimensions
     plt.figure(figsize=(12,6)) 
     plt.title(title + disclaimers, fontsize=11)
     plt.xlabel(xtext)
     plt.ylabel(ytext)
-    plt.ylim(yMin,yMax)
+    plt.ylim(yMin, yMax)
     plt.grid()
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
+    plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
 
-def end_plot(name=None, cols=5): # Set plot legend and output
-    plt.legend(bbox_to_anchor=(0, -.15, 1, -.5), loc=8, ncol=cols, fontsize=10,
+
+def end_plotTS(name=None, cols=3): # Set legend and output
+    plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade area of forecast
+    plt.legend(bbox_to_anchor=(0,-.15,1,-.5), loc=8, ncol=cols, fontsize=10,
                mode="expand", borderaxespad=-2., scatterpoints=1)
     if name:
         plt.savefig(name, bbox_inches='tight')
+    plt.close()
 
 disclaimers =('\nUSGS PROVISIONAL DATA'
               '\nSUBJECT TO REVISION'
               )
 xtext = ('Date and time')
 ytext = ('Hourly Precipitation, in')
+yMin=0.; yMax=1.25
 
 markers = [('b-', 'Seattle, Boeing Field'),
            ('m-', 'Everett, Paine Field'),
@@ -318,63 +348,34 @@ markers = [('b-', 'Seattle, Boeing Field'),
            ('r-', 'Tacoma Narrows Airport')
            ]
 
-data01 = readfiles(['data/ThTSplot360hour01.txt'])
-data02 = readfiles(['data/ThTSplot360hour02.txt'])
-data03 = readfiles(['data/ThTSplot360hour03.txt'])
-data04 = readfiles(['data/ThTSplot360hour04.txt'])
+data01 = readfilesFloat(['data/ThTSplot360hour01.txt'],(1,2,3,4,5,6,7,8,10,11,12,13))
+data02 = readfilesFloat(['data/ThTSplot360hour02.txt'],(1,2,3,4,5,6,7,8,10,11,12,13))
+data03 = readfilesFloat(['data/ThTSplot360hour03.txt'],(1,2,3,4,5,6,7,8,10,11,12,13))
+data04 = readfilesFloat(['data/ThTSplot360hour04.txt'],(1,2,3,4,5,6,7,8,10,11,12,13))
 data_list = [data01, data02, data03, data04]
+time01 = readfilesDate(['data/ThTSplot360hour01.txt'],cols=(0))
+time02 = readfilesDate(['data/ThTSplot360hour02.txt'],cols=(0))
+time03 = readfilesDate(['data/ThTSplot360hour03.txt'],cols=(0))
+time04 = readfilesDate(['data/ThTSplot360hour04.txt'],cols=(0))
+time_list = [time01, time02, time03, time04]
+titl01 = 'Time-Series Plot for Precipitation for Seattle, Boeing Field'
+titl02 = 'Time-Series Plot for Precipitation for Everett, Paine Field'
+titl03 = 'Time-Series Plot for Precipitation for Seattle-Tacoma Airport'
+titl04 = 'Time-Series Plot for Precipitation for Tacoma Narrows Airport'
+title_list = [titl01, titl02, titl03, titl04]
+outfil01 = 'boeing_f.png'
+outfil02 = 'paine_f.png'
+outfil03 = 'seatac_f.png'
+outfil04 = 'tacoma_f.png'
+outfil_list = [outfil01, outfil02, outfil03, outfil04]
 
-#KBFI
-init_plot('Time-Series Plot for Precipitation for Seattle, Boeing Field')
-i=0
-for d in data_list[i]: # Draw time-series plot of observed and forecasted precipitation
-	x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-	plt.plot(x, d[1], markers[i][0], label=markers[i][1])
-
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade area of forecast
-end_plot(name='boeing_f.png')
-
-#KPAE
-init_plot('Time-Series Plot for Precipitation for Everett, Paine Field')
-i=1
-for d in data_list[i]: # Draw time-series plot of observed and forecasted precipitation
-	x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-	plt.plot(x, d[1], markers[i][0], label=markers[i][1])
-
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade area of forecast
-end_plot(name='paine_f.png')
-
-#KSEA
-init_plot('Time-Series Plot for Precipitation for Seattle-Tacoma Airport')
-i=2
-for d in data_list[i]: # Draw time-series plot of observed and forecasted precipitation
-	x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-	plt.plot(x, d[1], markers[i][0], label=markers[i][1])
-
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade area of forecast
-end_plot(name='seatac_f.png')
-
-#KTIW
-init_plot('Time-Series Plot for Precipitation for Tacoma Narrows Airport')
-i=3
-for d in data_list[i]: # Draw time-series plot of observed and forecasted precipitation
-	x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-	plt.plot(x, d[1], markers[i][0], label=markers[i][1])
-
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade area of forecast
-end_plot(name='tacoma_f.png')
+# Draw time-series plots of precip. at each station
+for i, d, t, ttl, o in zip(range(4), data_list, time_list, title_list, outfil_list):
+    init_plotTS(ttl)
+    x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in t[0]]
+    y = d[0][:,0]
+    plt.plot(x, y, markers[i][0], label=markers[i][1])
+    end_plotTS(o)
 
 #Plot AWI history and forecast
 def AWI(numbers): # Define threshold value
@@ -399,15 +400,8 @@ def readfiles(file_list):# Import data from text files
                                   dtype = "|S", autostrip=True).T)
     return data
 
-def init_plot(title, yMin=-0.2, yMax=.1): # Set plot parameters and dimensions
-    plt.figure(figsize=(12,6)) 
-    plt.title(title + disclaimers, fontsize=11)
-    plt.xlabel(xtext)
-    plt.ylabel(ytext)
-    plt.ylim(yMin, yMax)
-    plt.grid()
-
 def end_plot(name=None, cols=3): # Set legend and output
+    plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade area of forecast
     plt.legend(bbox_to_anchor=(0,-.2,1,-.5), loc=8, ncol=cols, fontsize=10,
                mode="expand", borderaxespad=-2., scatterpoints=1)
     if name:
@@ -419,36 +413,27 @@ disclaimers = ('\n with respect to the Antecedent water index'
                '\nSUBJECT TO REVISION'
                )
 xtext = ('Date and time')
-ytest = ('Antecedent water index, in meters')
+ytext = ('Antecedent water index, in meters')
+yMin=-0.2; yMax=.1
 
 # Make plots of AWI
-init_plot('360-hour Precipitation History and Forecast near Seattle, Washington,')
+init_plotTS('360-hour Precipitation History and Forecast near Seattle, Washington,')
 
-for i in range(4):
-    for d in data_list[i]: # Draw time-series plots of AWI at all stations
-        x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-        plt.plot(x, d[13], markers[i][0], label=markers[i][1])
+for i, d, t in zip(range(4), data_list, time_list): # Draw time-series plots of AWI at all stations
+    x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in t[0]]
+    y = d[0][:,11]
+    plt.plot(x, y, markers[i][0], label=markers[i][1])
 
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
 plot_AWI()
-plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade area of forecast
 end_plot(name='awi_f.png')
 
-init_plot('360-hour Precipitation History and Forecast at Everett, Paine Field, KPAE,')
-
 #KPAE
+init_plotTS('360-hour Precipitation History and Forecast at Everett, Paine Field, KPAE,')
 i=1
-for d in data_list[i]: # Draw time-series plots of AWI at one station
-	x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-	plt.plot(x, d[13], markers[i][0], label=markers[i][1])
-
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
+x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in time02[0]]
+y = data02[0][:,11]
+plt.plot(x, y, markers[i][0], label=markers[i][1])
 plot_AWI()
-plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade area of forecast
 end_plot(name='awi_f_KPAE.png')
 
 # Plot Time Series I-D threshold index for each station
@@ -468,15 +453,6 @@ def plot_ID(): # Draw and label threshold index
     plt.plot(slide[0], slide[1], 'k-',
              linewidth=2, label='I-D threshold, ' + godt_id_label)
 
-def init_plot(title, yMin=0., yMax=2.): # Set plot parameters and dimensions
-    """ Init plot """
-    plt.figure(figsize=(12, 6)) 
-    plt.title(title + disclamers, fontsize=11)
-    plt.xlabel(xtext)
-    plt.ylabel(ytext)
-    plt.ylim(yMin,yMax)
-    plt.grid()
-
 disclamers = ('\n with respect to the Intensity-duration index'
               ' for the occurrence of landslides'
               '\nUSGS PROVISIONAL DATA'
@@ -484,32 +460,20 @@ disclamers = ('\n with respect to the Intensity-duration index'
               )
 xtext = ('Date and time')
 ytext = ('Intensity-duration index')
-
-init_plot('360-hour Intensity-duration History and Forecast near Seattle, Washington,')
-
-for i in range(4): # draw time series of threshold index values, all stations
-    for d in data_list[i]:
-        x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-        plt.plot(x, d[11], markers[i][0], label=markers[i][1])
-
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade forecast area
+yMin=0.; yMax=2.
+init_plotTS('360-hour Intensity-duration History and Forecast near Seattle, Washington,')
+for i, d, t in zip(range(4), data_list, time_list): # Draw time-series plots of ID index at all stations
+    x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in t[0]]
+    y = d[0][:,9]
+    plt.plot(x, y, markers[i][0], label=markers[i][1])
 plot_ID()
 end_plot(name='id_index_f.png')
 
-init_plot('360-hour Intensity-duration History and Forecast at Everett, Paine Field, KPAE,')
-
 #KPAE
+init_plotTS('360-hour Intensity-duration History and Forecast at Everett, Paine Field, KPAE,')
 i=1
-for d in data_list[i]: # draw time series of threshold index values, all stations
-	x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-	plt.plot(x, d[11], markers[i][0], label=markers[i][1])
-
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-plt.axvspan(x[336],x[359],facecolor='yellow', alpha=0.5, label = 'Forecast') # Shade forecast area
+x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in time02[0]]
+y = data02[0][:,9]
+plt.plot(x, y, markers[i][0], label=markers[i][1])
 plot_ID()
 end_plot(name='id_index_f_KPAE.png')
