@@ -24,7 +24,7 @@ The workflow for analyzing long-term precipitation data is similar to that for t
 
 This distribution includes source code files for the program *thresh* and two companion utility programs, *nwsfmt*, and *tsthresh*, as well as supporting shell scripts and Python scripts.  It also includes sample data in the data folder and sample initialization files in the main folder.  Empty folders for executable binaries, *bin*, are also included in the top-level directory.  Although the scripts have been written to use relative paths as much as possible, certain paths in the shell scripts and python scripts will need to be localized for a particular installation.  These include primarily the urls or paths for raw data from individual weather stations.  Also threshold parameters in *thresh_in.txt* and in the Python plotting routines will need to be localized for your installation.
 
-A complete user guide for the program thresh is available as a USGS Techniques and Methods chapter, Baum and others (in prep) online at https://doi.org/[insertProductDOIhere].
+A complete user guide for the program thresh is available as a USGS Techniques and Methods chapter, Baum and others (2018) online at https://doi.org/10.3133/tm14A2.
 
 ### User Interface ###
 
