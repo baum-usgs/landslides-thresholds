@@ -1,0 +1,8 @@
+ThTSplot360hour01.txt
+ThTSplot360hour02.txt
+ThTSplot360hour03.txt
+ThTSplot360hour04.txt
+ThTSplot36hour01.txt
+ThTSplot36hour02.txt
+ThTSplot36hour03.txt
+ThTSplot36hour04.txt

@@ -16,6 +16,7 @@ from numpy import ma
 import datetime
 import time
 import os
+import subprocess
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
@@ -48,6 +49,11 @@ else:
     thresh_path=os.path.normpath('../../bin/thresh')
 print(thresh_path)
 os.system(thresh_path)
+
+# Run shell script to delete extra space characters from time-series input files
+args = ['../../src/trimSpacesR.sh']
+p = subprocess.Popen(args)
+print(p)
 
 # Plot Incremental Precipitation
 # Recent and antecedent precipitation threshold
@@ -108,6 +114,33 @@ def readfiles(file_list): # Read values from table of current conditions
                                   dtype ="|S", autostrip=True).T)
     return data
 
+def readfilesDate(file_list, cols):  # Read time and date values from list of text files
+    """ read timestamp columns from <TAB> delimited files as strings
+        ignoring '# Comment' lines """
+    data = []
+    for fname in file_list:
+        data.append(
+                    np.genfromtxt(fname, 
+                                  comments='#',    # skip comment lines
+                                  delimiter='\t',
+                                  dtype ="S17", 
+                                  usecols=cols,
+                                  autostrip=True,
+                                  ).T)
+    return data
+
+def readfilesFloat(file_list, cols):  # Read values from list of text files
+    """ read <TAB> delimited files as floats
+        ignoring '# Comment' lines """
+    data = []
+    for fname in file_list:
+        data.append(
+                    np.loadtxt(fname, 
+                                  comments='#',    # skip comment lines  skiprows=3,
+                                  delimiter='\t',
+                                  usecols=cols))
+    return data
+
 def init_plot(title, xMin=0, xMax=15, yMin=0, yMax=8): # Set plot dimensions and parameters
     """ Init plot """
     plt.figure(figsize=(12, 6))
@@ -158,16 +191,15 @@ matplotlib.rc('font', **font)  # pass in the font dict as kwargs
 
 # Draw plot of recent and antecedent precipitation threshold
 init_plot('Current conditions in Mukilteo, Washington,')
-
 data = readfiles(glob.glob('data/ThSta*.txt'))
+
 for i, d in enumerate(data): # Scatter plot of current conditions
-    plt.scatter(d[2], d[3],
+    plt.scatter(float(d[2]), float(d[3]),
                 marker=markers[str(d[1])][0],
                 c=markers[str(d[1])][1],
                 label=markers[str(d[1])][2], s=150)
 
 plot_threshold()
-
 end_plot(name='Muk_cmtr.png')
 
 # ------------------------
@@ -175,76 +207,72 @@ end_plot(name='Muk_cmtr.png')
 #Plot Precipitation History for 3-Day/Prior 15-Day threshold
 init_plot('360-hour precipitation history in Mukilteo, Washington,')
 
-data01 = readfiles(['data/ThTSplot360hour01.txt'])
+data01 = readfilesFloat(['data/ThTSplot360hour01.txt'],(1,2,3,4,5,6,7,8,10,11,12,13))
 for d in data01: # Trace 15-day history of conditions relative to threshold
-    plt.plot(d[2], d[3], label='Mukilteo, VH, history')
+    plt.plot(d[:,1], d[:,2], label='Mukilteo, VH, history')
 
 data = readfiles(['data/ThSta01.txt'])
 for d in data:
-    plt.scatter(d[2], d[3], # Scatter plot of current conditions
+    plt.scatter(float(d[2]), float(d[3]), # Scatter plot of current conditions
                 marker=markers[str(d[1])][0],
                 c=markers[str(d[1])][1],
                 label='Current', s=150)
 
 plot_threshold()
-
 end_plot(name='MVD116_CT_hist.png', cols=3)
 
 # ------------------------
 
 init_plot('360-hour precipitation history in Mukilteo, Washington,')
 
-data02 = readfiles(['data/ThTSplot360hour02.txt'])
+data02 = readfilesFloat(['data/ThTSplot360hour02.txt'],(1,2,3,4,5,6,7,8,10,11,12,13))
 for d in data02: # Trace 15-day history of conditions relative to threshold
-    plt.plot(d[2], d[3], label='Mukilteo, LS, history')
+    plt.plot(d[:,1], d[:,2], label='Mukilteo, LS, history')
 
 data = readfiles(['data/ThSta02.txt'])
 for d in data:
-    plt.scatter(d[2], d[3], # Scatter plot of current conditions
+    plt.scatter(float(d[2]), float(d[3]), # Scatter plot of current conditions
                 marker=markers[str(d[1])][0],
                 c=markers[str(d[1])][1],
                 label='Current', s=150)
 
 plot_threshold()
-
 end_plot(name='MWatA_CT_hist.png', cols=3)
 
 # ------------------------
 
 init_plot('360-hour precipitation history in Mukilteo, Washington,')
 
-data03 = readfiles(['data/ThTSplot360hour03.txt'])
+data03 = readfilesFloat(['data/ThTSplot360hour03.txt'],(1,2,3,4,5,6,7,8,10,11,12,13))
 for d in data03: # Trace 15-day history of conditions relative to threshold
-    plt.plot(d[2], d[3], label='M1, history')
+    plt.plot(d[:,1], d[:,2], label='M1, history')
 
 data = readfiles(['data/ThSta03.txt'])
 for d in data: # Trace 15-day history of conditions relative to threshold
-    plt.scatter(d[2], d[3], # Scatter plot of current conditions
+    plt.scatter(float(d[2]), float(d[3]), # Scatter plot of current conditions
                 marker=markers[str(d[1])][0],
                 c=markers[str(d[1])][1],
                 label='Current', s=150)
 
 plot_threshold()
-
 end_plot(name='MLP_CT_hist.png', cols=3)
 
 # ------------------------
 
 init_plot('360-hour precipitation history in Mukilteo, Washington,')
 
-data04 = readfiles(['data/ThTSplot360hour04.txt'])
+data04 = readfilesFloat(['data/ThTSplot360hour04.txt'],(1,2,3,4,5,6,7,8,10,11,12,13))
 for d in data04: # Trace 15-day history of conditions relative to threshold
-    plt.plot(d[2], d[3], label='M2, history')
+    plt.plot(d[:,1], d[:,2], label='M2, history')
 
 data = readfiles(['data/ThSta04.txt'])
 for d in data:
-    plt.scatter(d[2], d[3], # Scatter plot of current conditions
+    plt.scatter(float(d[2]), float(d[3]), # Scatter plot of current conditions
                 marker=markers[str(d[1])][0],
                 c=markers[str(d[1])][1],
                 label='Current', s=150)
 
 plot_threshold()
-
 end_plot(name='MWWD_CT_hist.png', cols=3)
 
 #Plot Precipitation Intensity and duration
@@ -293,17 +321,17 @@ godt_coeff = 3.257
 godt_expon = -1.13
 godt_id_label = 'I=3.257*D^(-1.13)'
 
-def readfiles(file_list): # Import data from a list of input files
-    """ read <TAB> delemited files as strings
-        ignoring '# Comment' lines """
-    data = []
-    for fname in file_list:
-        data.append(
-                    np.genfromtxt(fname,
-                                  comments='#',    # skip comment lines
-                                  delimiter='\t',
-                                  dtype ="|S", autostrip=True).T)
-    return data
+# def readfiles(file_list): # Import data from a list of input files
+#     """ read <TAB> delemited files as strings
+#         ignoring '# Comment' lines """
+#     data = []
+#     for fname in file_list:
+#         data.append(
+#                     np.genfromtxt(fname,
+#                                   comments='#',    # skip comment lines
+#                                   delimiter='\t',
+#                                   dtype ="|S", autostrip=True).T)
+#     return data
 
 def init_plot(title, xMin=0, xMax=70, yMin=0.0, yMax=0.6): #Set plot dimensions and paramters
     """ Init plot """
@@ -332,7 +360,6 @@ disclamers = ('\n with respect to precipitation intensity and duration threshold
 xtext = ('D: Rainfall duration, in hours')
 ytext = ('I: Average intensity, in inches per hour')
 
-
 """ Marker Dictionary Station : (MarkerStyle, Color, Title)"""
 markers = { '01':('p', 'b', 'VH'),
             '02':('D', 'm', 'LS'),
@@ -345,7 +372,7 @@ init_plot('Current conditions in Mukilteo, Washington,')
 
 data = readfiles(glob.glob('data/ThSta*.txt'))
 for i, d in enumerate(data): # Scatter plot of current conditions relative to threshold
-    plt.scatter(d[6], d[4],
+    plt.scatter(float(d[6]), float(d[4]),
                 marker=markers[str(d[1])][0],
                 c=markers[str(d[1])][1],
                 label=markers[str(d[1])][2], s=150)
@@ -378,26 +405,39 @@ def plot_AWI(): # Draw threshold line
     plt.plot(slide[0], slide[1], 'k-',
              linewidth=2, label='Wet antecedent conditions: AWI=0.02')
 
-def readfiles(file_list): # Import data from text files
-    """ read <TAB> delemited files as strings
-        ignoring '# Comment' lines """
-    data = []
-    for fname in file_list:
-        data.append(
-                    np.genfromtxt(fname,
-                                  comments='#',    # skip comment lines
-                                  delimiter='\t',
-                                  dtype ="|S", autostrip=True).T)
-    return data
+# def readfiles(file_list): # Import data from text files
+#     """ read <TAB> delemited files as strings
+#         ignoring '# Comment' lines """
+#     data = []
+#     for fname in file_list:
+#         data.append(
+#                     np.genfromtxt(fname,
+#                                   comments='#',    # skip comment lines
+#                                   delimiter='\t',
+#                                   dtype ="|S", autostrip=True).T)
+#     return data
 
-def init_plot(title, yMin=-0.2, yMax=.1): # Set plot parameters and dimensions
+# def init_plot(title, yMin=-0.2, yMax=.1): # Set plot parameters and dimensions
+#     """ Init plot """
+#     plt.figure(figsize=(12, 6))
+#     plt.title(title + disclamers, fontsize=11)
+#     plt.xlabel(xtext)
+#     plt.ylabel(ytext)
+#     plt.ylim(yMin,yMax)
+#     plt.grid()
+
+def init_plotTS(title): # Set plot parameters and dimensions
     """ Init plot """
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(12, 6)) 
     plt.title(title + disclamers, fontsize=11)
     plt.xlabel(xtext)
     plt.ylabel(ytext)
-    plt.ylim(yMin,yMax)
+    plt.ylim((yMin,yMax))
     plt.grid()
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
+    plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
+
 
 def end_plot(name=None, cols=3): # Set legend and output
     """ Finalize plot"""
@@ -414,6 +454,7 @@ disclamers = ('\n with respect to the Antecedent water index'
 
 xtext = ('Date and time')
 ytext = ('Antecedent water index, in meters')
+yMin=-0.2; yMax=.1
 
 """ Marker Dictionary Station : (MarkerStyle, Color, Title)"""
 markers = [ ('b-', 'VH'),
@@ -422,21 +463,32 @@ markers = [ ('b-', 'VH'),
            ('r-', 'M2')
            ]
 
-# Make plots of AWI
-init_plot('360-hour Precipitation History in Mukilteo, Washington,')
-
+time01 = readfilesDate(['data/ThTSplot360hour01.txt'],cols=(0))
+time02 = readfilesDate(['data/ThTSplot360hour02.txt'],cols=(0))
+time03 = readfilesDate(['data/ThTSplot360hour03.txt'],cols=(0))
+time04 = readfilesDate(['data/ThTSplot360hour04.txt'],cols=(0))
+time_list = [time01, time02, time03, time04]
 data_list = [data01, data02, data03, data04]
-for i in range(4):
-    for d in data_list[i]: # Draw time-series plots of AWI at all stations
-        x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-        plt.plot(x, d[13], markers[i][0], label=markers[i][1])
 
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
+# Make plots of AWI
+# init_plot('360-hour Precipitation History in Mukilteo, Washington,')
+# 
+# data_list = [data01, data02, data03, data04]
+# for i in range(4):
+#     for d in data_list[i]: # Draw time-series plots of AWI at all stations
+#         x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
+#         plt.plot(x, d[13], markers[i][0], label=markers[i][1])
+# 
+# plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
+# plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
+# plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
 
+init_plotTS('360-hour Precipitation History in Mukilteo, Washington,')
+for i, d, t in zip(range(4), data_list, time_list): # Draw time-series plots of AWI at all stations
+    x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in t[0]]
+    y = d[0][:,11]
+    plt.plot(x, y, markers[i][0], label=markers[i][1])
 plot_AWI()
-
 end_plot(name='Muk_awi.png')
 
 # Plot Time Series I-D threshold index for each station
@@ -454,14 +506,14 @@ def plot_ID(): # Draw and label threshold index
     plt.plot(slide[0], slide[1], 'k-',
              linewidth=2, label='I-D threshold, ' + godt_id_label)
 
-def init_plot(title, yMin=0., yMax=2.): # Set plot parameters and dimensions
-    """ Init plot """
-    plt.figure(figsize=(12, 6))
-    plt.title(title + disclamers, fontsize=11)
-    plt.xlabel(xtext)
-    plt.ylabel(ytext)
-    plt.ylim(yMin,yMax)
-    plt.grid()
+# def init_plot(title, yMin=0., yMax=2.): # Set plot parameters and dimensions
+#     """ Init plot """
+#     plt.figure(figsize=(12, 6))
+#     plt.title(title + disclamers, fontsize=11)
+#     plt.xlabel(xtext)
+#     plt.ylabel(ytext)
+#     plt.ylim(yMin,yMax)
+#     plt.grid()
 
 disclamers = ('\n with respect to the Intensity-duration index'
               ' for the occurrence of landslides'
@@ -470,6 +522,7 @@ disclamers = ('\n with respect to the Intensity-duration index'
               )
 xtext = ('Date and time')
 ytext = ('Intensity-duration index')
+yMin=0.; yMax=2.
 
 """ Marker Dictionary Station : (MarkerStyle, Color, Title)"""
 markers = [ ('b-', 'VH'),
@@ -478,17 +531,21 @@ markers = [ ('b-', 'VH'),
            ('r-', 'M2')
            ]
 
-init_plot('360-hour Intensity-duration History in Mukilteo, Washington,')
+# init_plot('360-hour Intensity-duration History in Mukilteo, Washington,')
+# 
+# for i in range(4): # draw time series of threshold index values, all stations
+#     for d in data_list[i]:
+#         x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
+#         plt.plot(x, d[11], markers[i][0], label=markers[i][1])
+# 
+# plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
+# plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
+# plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
 
-for i in range(4): # draw time series of threshold index values, all stations
-    for d in data_list[i]:
-        x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in d[0]]
-        plt.plot(x, d[11], markers[i][0], label=markers[i][1])
-
-plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d\n%H:%M'))
-plt.gca().xaxis.set_minor_locator(mdates.HourLocator(interval=6))
-plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-
+init_plotTS('360-hour Intensity-duration History in Mukilteo, Washington,')
+for i, d, t in zip(range(4), data_list, time_list): # Draw time-series plots of AWI at all stations
+    x = [dt.datetime.strptime(date,'%H:%M %m/%d/%Y') for date in t[0]]
+    y = d[0][:,9]
+    plt.plot(x, y, markers[i][0], label=markers[i][1])
 plot_ID()
-
 end_plot(name='Muk_id_index.png')
